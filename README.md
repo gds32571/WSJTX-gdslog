@@ -2,7 +2,7 @@
 A Python program to perform several functions based on reception of WSJT-X UDP packets.  I am currently using WSJT-X version 2.1.0.
 
    Status (type 1) packets are used to control a WiFi connected antenna switch.  The program derives the band from the operating frequency dropdown of WSJT-X 
-   and commands a switch to the appropriate antenna via an HTTP command.
+   and commands the antenna switch to connect to the appropriate antenna via an HTTP command.
    
    QSO Logged (type 5) packets are used to log a contact in my ham logging database.  It is PHP3 based with a MySQL database but has not yet been documented anywhere. I've been using it for more than a decade.
    
