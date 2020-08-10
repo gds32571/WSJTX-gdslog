@@ -16,7 +16,7 @@ A Python program to perform several functions based on reception of WSJT-X UDP p
    This is derived from Randy Stagers (K9VD) excellent work (https://github.com/rstagers/WSJT-X).  I added the WSPR (Packet type 10) definition.
 
 ### mysql-wspr-show.sh
-   This shell script retrieves data from the WSPRLOG database and uses MQTT publish to display on a tiny OLED screen. It runs from a crontab on my Raspberry Pi computer.
+   This shell script retrieves data from the WSPRLOG database and uses MQTT publish to display spot data on a tiny OLED screen. It runs from a crontab on my Raspberry Pi computer.
 
 ### Utility programs
 #### mysql-wspr.sql
