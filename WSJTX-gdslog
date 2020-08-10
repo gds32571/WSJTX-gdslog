@@ -7,20 +7,22 @@ WSJTX-gdslog
 I'm using WSJT-X version2.1.0 (Thank you Joe taylor and crew!)
 
 8 August 2020 - gswann - AI4DE
-Added decoding of WSPR packets and creation of Mysql INSERT
-statement to record WSPR packets into a database
+Added decoding of WSPR packets and creation of sql INSERT
+statement to record WSPR packets into a database.
 Also uses mysql as the database
+
+27 June 2020 - gswann - AI4DE
+thinking about automatic antenna switching since I built a
+WIFi-connected antenna switch.
+The program will now select the correct antenna
+based on the band value from WSJT-X
+The antenna switch is my home made version.
 
 23 Sept 2019 - gswann - AI4DE
 Added my hamlog function to automatically log contact 
 data into my own php3 based logging program
 Mysql is the database
 
-27 June 2020 - gswann - AI4DE
-thinking about automatic antenna switching
-The program will now select the correct antenna
-based on the band value from WSJT-X
-The antenna switch is my home made version.
 
 Thanks for the headstart, Jari!
 
