@@ -50,6 +50,7 @@ import subprocess
 
 from urllib.request import urlopen
 
+# put your own data here
 RX_CALL = 'AI4DE'
 UDP_IP = "192.168.2.69"
 UDP_PORT = 2237
@@ -196,7 +197,7 @@ upload_stat = 0,sent_qsl=0,rcvd_qsl=0, \
 qso_excerpt ='" + qso_excerpt + "';"
 
             
-            print(strSQL)
+#            print(strSQL)
 
             p = subprocess.Popen(["mysql","hamlog"],stdin=subprocess.PIPE)
             p.communicate(bytes(strSQL,'UTF-8'))
