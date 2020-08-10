@@ -24,4 +24,6 @@ A Python program to perform several functions based on reception of WSJT-X UDP p
     Creates the empty WSPR logging table in mysql
 #### create_mymap.sql
     Creates and populates a mapping table to better display data on the OLED screen
-####     
+#### wspr.sql
+    Shows preview of data that will be sent to the spot display and the backing log data.
+    
