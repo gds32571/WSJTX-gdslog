@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+
+"""
+
+WSJTX-gdslog
+
+I'm using WSJT-X version2.1.0 (Thank you Joe taylor and crew!)
+
+8 August 2020 - gswann - AI4DE
+Added decoding of WSPR packets and creation of Mysql INSERT
+statement to record WSPR packets into a database
+Also uses mysql as the database
+
+23 Sept 2019 - gswann - AI4DE
+Added my hamlog function to automatically log contact 
+data into my own php3 based logging program
+Mysql is the database
+
+27 June 2020 - gswann - AI4DE
+thinking about automatic antenna switching
+The program will now select the correct antenna
+based on the band value from WSJT-X
+The antenna switch is my home made version.
+
+Thanks for the headstart, Jari!
+
+
+WSJT-X_TUI.PY - text-based UI to read spots from WSJT-X via the UDP port
+(c) 2018 Jari Perkiömäki OH6BG
+
+CHANGELOG:
+
+29 Apr 2018: Initial release
+
+Use WSJT-X v1.9.0 (rc versions ok), Python 3.6.x, and WSJTXClass by Randy K9VD
+Download WSJT-X Python Class here: https://github.com/rstagers/WSJT-X/
+
+
+
+"""
+
+import socket
+from datetime import datetime
+import time
+import WSJTXClass
+
+from datetime import datetime
+
+import subprocess
+
+from urllib.request import urlopen
+
+RX_CALL = 'AI4DE'
+UDP_IP = "192.168.2.69"
+UDP_PORT = 2237
+
+oldband = 0
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.bind((UDP_IP, UDP_PORT))
+basefreq = 0
+mode_type = ''
+DXList = []
+start_time = time.time()
+
+print("WSJT-X interface program starting")
+
+try:
+
+    while True:
+
+        fileContent, addr = sock.recvfrom(1024)
+        NewPacket = WSJTXClass.WSJTX_Packet(fileContent, 0)
+        NewPacket.Decode()
+
+# uncomment for troubleshooting
+#        print("Packet received")
+#        print(NewPacket.PacketType);  
+#        print(fileContent)
+
+
+# status packet type 1 used to select antenna
+        if NewPacket.PacketType == 1:
+            StatusPacket = WSJTXClass.WSJTX_Status(fileContent, NewPacket.index)
+            StatusPacket.Decode()
+            basefreq = StatusPacket.Frequency
+            bandfreq = int(basefreq/1000000)
+#            print("Band frequency = ",bandfreq)
+            if oldband != bandfreq:
+               print(StatusPacket.Mode)
+               print("Band Freq has changed")
+               print("Band frequency = ",bandfreq)
+               oldband = bandfreq
+               if bandfreq == 7: 
+                   print("Antenna 1 (40 meters) was chosen\n")
+                   urlopen("http://antsw2./ant?device=1")
+               elif bandfreq == 10: 
+                   print("Antenna 2 (30 meters) was chosen\n")
+                   urlopen("http://antsw2./ant?device=2")
+               elif bandfreq == 14: 
+                   print("Antenna 3 (20 meters) was chosen\n")
+                   urlopen("http://antsw2./ant?device=3")
+               elif bandfreq == 18: 
+                   print("Antenna 3 (20/18 meters) was chosen\n")
+                   urlopen("http://antsw2./ant?device=3")
+               elif bandfreq == 21: 
+                   print("Antenna 4 (15 meters) was chosen\n")
+                   urlopen("http://antsw2./ant?device=4")
+               elif bandfreq == 28: 
+                   print("Antenna 5 (10 meters) was chosen\n")
+                   urlopen("http://antsw2./ant?device=5")
+               else:
+                   print("Invalid frequency selected!")    
+                   print("Open cable selected - SWR will be HIGH!")
+                   urlopen("http://antsw2./ant?device=0")
+                   
+
+        elif NewPacket.PacketType == 10:
+            print("WSPR received")
+            WSPRPacket = WSJTXClass.WSJTX_WSPRDecode(fileContent, NewPacket.index)
+            WSPRPacket.Decode()
+            h = int(((WSPRPacket.Time / (1000 * 60 * 60)) % 24))
+            m = int(((WSPRPacket.Time / (1000 * 60)) % 60))
+            s = int(((WSPRPacket.Time / (1000)) % 60))
+            utc = '{:02}{:02}'.format(h, m)
+
+            DXcall = (WSPRPacket.DXcall)
+            DXgrid = (WSPRPacket.DXgrid)
+            Drift  = (WSPRPacket.Drift)
+            Power  = (WSPRPacket.Power)
+            Frequency  = (WSPRPacket.Frequency)/1000000
+            DeltaTime = int((WSPRPacket.DeltaTime) * 1000) / 1000
+            snr =  (WSPRPacket.snr)
+            print("UTC: ",utc)
+            print(" SNR ",snr)
+            print(" DELTATIME ",DeltaTime)
+            print(" FREQUENCY ",Frequency)
+            print(" DRIFT ",Drift)
+            print(" DXCALL ",DXcall)	
+            print(" DXGRID ",DXgrid)
+            print(" Power ",Power)
+
+            logdate = (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+
+
+            strSQL = "insert into wsprlog set logdate = '" + logdate + "',\
+utc= '" + utc + "',\
+snr='" + str(snr) + "', deltatime= '" + str(DeltaTime) + "',\
+frequency= '" + str(Frequency) + "',\
+drift= '" + str(Drift) + "',\
+dxcall='" + DXcall + "', dxgrid= '" + DXgrid + "', power= '" + str(Power) + "';"  
+
+
+#            print (strSQL)              
+
+            p = subprocess.Popen(["mysql","wsprlog"],stdin=subprocess.PIPE)
+            p.communicate(bytes(strSQL,'UTF-8'))
+
+
+        elif NewPacket.PacketType == 5:
+            print("Logging received")
+            QSOLoggedPacket = WSJTXClass.WSJTX_Logged(fileContent, NewPacket.index)
+            QSOLoggedPacket.Decode()
+            DXcall = (QSOLoggedPacket.DXcall)
+            DXgrid = (QSOLoggedPacket.DXgrid)
+            Mode =  (QSOLoggedPacket.Mode)
+            rst = (QSOLoggedPacket.ReportSent)
+            power = (QSOLoggedPacket.TxPower)
+#            rst = (QSOLoggedPacket.ReportReceived)
+#            rst=''
+#            print(QSOLoggedPacket.TimeOff)
+#            print(QSOLoggedPacket.DialFrequency)
+
+            comments = (QSOLoggedPacket.Comments)
+
+            
+            h = int(((QSOLoggedPacket.TimeOff / (1000 * 60 * 60)) % 24))
+            m = int(((QSOLoggedPacket.TimeOff / (1000 * 60)) % 60))
+            s = int(((QSOLoggedPacket.TimeOff / (1000)) % 60))
+            utc = '{:02}{:02}'.format(h, m)
+            frequency = int(QSOLoggedPacket.DialFrequency/100)/10
+
+            logdate = (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
+
+            ham_name=(QSOLoggedPacket.Name)
+            qth=''
+            qso_excerpt = ''
+            strSQL = "insert into hamlog set ham_user='" + RX_CALL + "', \
+contact_date='" + logdate  + "', frequency='" + str(frequency)+ "', \
+mode='" + Mode + "',callsign='" + DXcall + "', \
+ham_name='" + ham_name + "',qth='" + qth + "',grid='" + DXgrid + "', \
+country='US', \
+comments='" + comments + "', \
+rst='" + rst + "',power='" + power +   "',\
+upload_stat = 0,sent_qsl=0,rcvd_qsl=0, \
+qso_excerpt ='" + qso_excerpt + "';"
+
+            
+            print(strSQL)
+
+            p = subprocess.Popen(["mysql","hamlog"],stdin=subprocess.PIPE)
+            p.communicate(bytes(strSQL,'UTF-8'))
+
+
+# this just displays packets on the screen - I don't use this info
+        elif NewPacket.PacketType == 2:
+
+            if not basefreq:
+                continue
+
+            DecodePacket = WSJTXClass.WSJTX_Decode(fileContent, NewPacket.index)
+            DecodePacket.Decode()
+            h = int(((DecodePacket.Time / (1000 * 60 * 60)) % 24))
+            m = int(((DecodePacket.Time / (1000 * 60)) % 60))
+            utc = '{:02}{:02}'.format(h, m)
+            frequency = (int(basefreq) + int(DecodePacket.DeltaFrequency)) / 1000
+            msg = DecodePacket.Message.split()
+
+            if len(msg) > 2:
+                if msg[0] == "CQ":  # "CQ OX6X KP03"
+                    mode_type = "CQ"
+                    if len(msg[1]) < 3:  # "CQ DX/EU/NA/AS OX6X"
+                        dx = msg[2]
+                    else:
+                        dx = msg[1]
+                else:
+                    mode_type = "DE"
+                    if len(msg[1]) > 2:
+                        dx = msg[1]
+                    else:
+                        continue  # "73 DE OX6X"
+            elif len(msg) == 2:
+                if "/" in msg[0] or "/" in msg[1]:  # "SX3X OZ/OX6X" or "OZ/OX6X SX3X"
+                    mode_type = "DE"
+                    if len(msg[1]) > 2:  # "OX6X/QRP 73"
+                        dx = msg[1]
+                    else:
+                        continue
+                else:
+                    continue
+            else:
+                continue
+
+            # clear unique call list every 3 minutes
+            if time.time() - start_time > 180:
+                DXList = []
+                start_time = time.time()
+
+            # only allow unique calls to be spotted during the 3-minute period
+            if dx not in DXList:
+                DXList.append(dx)
+            else:
+                continue
+
+            spot = "{} {:<10}{:8.1f}  {:<14} {:<5}{:3} dB  {:8}{:8}{:4}Z".format(
+                "DX de",
+                (RX_CALL + "-#")[:8] + ":",
+                frequency,
+                dx,
+                "FT8",
+                DecodePacket.snr,
+                "",
+                mode_type,
+                utc,
+            )
+
+            print(spot)
+
+            frequency = 0
+            dx = ''
+            mode_type = ''
+            utc = ''
+
+finally:
+    sock.close()
