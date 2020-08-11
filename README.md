@@ -1,5 +1,5 @@
 # WSJTX-gdslog Project
-A Python program to perform several functions based on reception of WSJT-X UDP packets.  I am currently using WSJT-X version 2.1.0.
+A program to capture data from WSJT-X for display and analysis. This mostly Python-based project performs several functions with received WSJT-X UDP packets.  I am currently using WSJT-X version 2.1.0.
 
    Status (type 1) packets are used to control a WiFi connected antenna switch.  The program derives the band from the operating frequency dropdown of WSJT-X 
    and commands the antenna switch to connect to the appropriate antenna via an HTTP command.  This happens on any change of the dropdown, whether
@@ -7,7 +7,7 @@ A Python program to perform several functions based on reception of WSJT-X UDP p
    
    QSO Logged (type 5) packets are used to log a contact in my ham logging database.  It is PHP3 based with a MySQL database but has not yet been documented anywhere. I've been using it for more than a decade.
    
-   WSPR Decode (type 10) packets are inserted into a MySQL database to allow aggregate reporting to an ESP8266-based OLED screen. 
+   WSPR Decode (type 10) packets are inserted into a MySQL database to allow aggregate reporting to a "Home Assistant" home automation system and also to an ESP8266-based OLED screen. 
 
 ### WSJTX-gdslog:
    The main logging and control program, written in Python3.  This program was taken from WSJT-X_TUI.PY, a program by Jari Perki (OH6BG).
