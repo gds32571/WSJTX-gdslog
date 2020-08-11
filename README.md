@@ -19,6 +19,10 @@ A Python program to perform several functions based on reception of WSJT-X UDP p
 ### mysql-wspr-show.sh
    This shell script retrieves data from the WSPRLOG database and uses MQTT publish to display spot data on a tiny OLED screen. It runs from a crontab on my Raspberry Pi computer.
 
+### MQTT-spots
+  A python program to read WSPR spot data from the mysql database and publish to an MQTT broker.  It publishes the spot count for each band that has a record in the nost recent 2 hours.  It also publishes a "0" spots value for the bands that have no spots. 
+
+   
 ### Utility programs
 #### mysql-wspr.sql
     Creates the empty WSPR logging table in mysql
