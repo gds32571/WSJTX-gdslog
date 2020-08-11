@@ -34,7 +34,7 @@ mydb = mysql.connector.connect(
 mycursor = mydb.cursor()
 
 client = mqtt.Client("wsprspots")
-client.username_pw_set('hass', password='hass')
+client.username_pw_set('', password='')
 
 
 def on_connect(client, userdata, flags, rc):
