@@ -1,0 +1,100 @@
+#!/usr/bin/python
+
+"""
+   10 Aug 2020 - gswann - AI4DE
+
+   MQTT-spots 
+      A python program to read WSPR spot data from the mysql database
+	and publish to an MQTT broker
+
+
+   You might need to do this
+#   sudo python -m pip install mysql-connector-python
+
+
+"""
+
+from datetime import datetime
+import time
+#import subprocess
+import paho.mqtt.client as mqtt
+
+import mysql.connector
+
+time.sleep(3)
+
+version = "1.0"
+
+mydb = mysql.connector.connect(
+  host="localhost",
+  user="pi",
+  password="",
+  database="wsprlog"
+)
+mycursor = mydb.cursor()
+
+client = mqtt.Client("wsprspots")
+client.username_pw_set('', password='')
+
+
+def on_connect(client, userdata, flags, rc):
+    print("Connection returned result: "+connack_string(rc))
+
+mqtt.on_connect = on_connect
+
+
+client.connect("192.168.2.6",1883,60)
+client.loop_start()
+
+
+a=1
+
+while(a==1):
+
+#    strSQL = "select truncate(frequency,0) as band, count(dxcall) as counts \
+#              from wsprlog where frequency like '7%' and \
+#              logdate > date_sub(utc_timestamp(),interval 120 minute) group by band;"
+
+
+    strSQL =  "select \
+        (select fr from myMap where freq=truncate(frequency,0)) as fr,\
+        (select wl from myMap where freq=truncate(frequency,0)) as wl ,\
+        count(dxcall) as spots from wsprlog where \
+        logdate > date_sub(utc_timestamp(),interval 120 minute )\
+        group by truncate(frequency,0);"
+
+#    strSQL = "select * from wsprlog limit 1;"
+
+    mycursor.execute(strSQL)
+    myresult = mycursor.fetchall()
+
+# clear band history dictionary
+    bands = {"40m": 0,
+             "30m": 0,
+             "20m": 0, 
+             "17m": 0,
+             "15m": 0, 
+             "10m": 0}
+
+
+    for rec in myresult:
+
+       print("wsprspots/" + rec[0])
+       print(rec[2])
+       # send spot to Home Assistant       
+       client.publish("wsprspots/" + str(rec[0]), str(rec[2]))
+
+       # add spot to band history dictionary
+       bands[str(rec[0])] = rec[2]
+
+#    import pdb; pdb.set_trace()
+
+#    print(bands)
+
+# where ever a band had no spots in the wsprlog database,
+# and of course the band history dictionary, report a '0' 
+    for band in bands:
+       if bands[band] == 0:
+           client.publish("wsprspots/" + band, str(bands[band]))
+    a=0
+    
