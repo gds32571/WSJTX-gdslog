@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+
+# 21 Aug 2020 - gswann
+#   Program to monitor the antenna setting and provide on a port for the 
+#   PHP3 ham log program to record in the logging database
+
+# to test from another computer:
+# cat <(echo status) - | nc 192.168.2.69 2222
+
+# so when I open a new log entry (from WSJT-X), the
+# antenna field will be filled in with whatever the 
+# currently selected antenna is.
+
+
+
+version = "1.0.1"
+
+#import pdb
+import paho.mqtt.publish as publish
+import paho.mqtt.client as mqtt
+import socket
+import sys
+import time
+from time import sleep
+from datetime import datetime
+
+
+HAhost = 'ha32163'
+
+HOST = 'rp6'
+print("starting")
+
+PORT = 2222
+srvName = "antdata"
+
+myPort  = 2222
+myTimeoutCnt = 0
+
+
+# topic1
+#antsw2/status
+# 'AntSw2'
+# 'MFJ1788'
+
+# topic2
+#antsw2/antenna
+# 'Ant2 30m'
+
+myTopic1 = "antsw2/status"
+myTopic2 = "antsw2/antenna"
+
+antenna='undef'
+antenna1='undef'
+antenna2='undef'
+
+
+################################################
+def on_connect(client, userdata, rc, flags):
+    print("Connected with result code "+str(rc))
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+    client.subscribe(myTopic1)
+    print("Subscribing to " + myTopic1)
+    client.subscribe(myTopic2)
+    print("Subscribing to " + myTopic2)
+
+
+
+################################################
+# The callback for when a PUBLISH message is received from the server.
+def on_message(client, userdata, msg):
+    global a, start,myTopic1, myTopic2, antenna, antenna1 , antenna2
+
+    myPayload = msg.payload.decode(encoding='UTF-8')
+
+#    import pdb;pdb.set_trace()
+    if msg.topic == myTopic1 :
+        if myPayload == 'MFJ1788':
+           antenna = myPayload
+           antenna1 = myPayload
+        elif myPayload == 'AntSw2':
+           antenna1 = myPayload
+#           antenna = antenna1 + antenna2
+           antenna = antenna2
+#        print("antenna1 " + antenna1)
+#        print (antenna)
+
+    elif msg.topic == myTopic2 :
+        antenna2 = myPayload
+        if (antenna1 == 'AntSw2'):	
+#           antenna = antenna1 + " " + antenna2  
+           antenna = antenna2  
+
+    print (antenna)
+        
+######################################
+
+client = mqtt.Client()
+client.username_pw_set('hass', password='hass')
+client.on_connect = on_connect
+client.on_message = on_message
+client.connect_async(HAhost, 1883, 60)
+
+#   client.loop_forever()
+client.loop_start()
+
+print("Version: " + version)
+
+start = time.time()
+
+oldmin = datetime.now().minute - 1
+myGo = time.time() + 60
+
+######################################
+
+# open listening port on this machine
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connected = 0
+print(HOST,PORT)
+while connected == 0:
+  try:
+    sleep(1)
+    s.bind((HOST, PORT))
+    s.settimeout(5.0)
+    s.listen(5)
+    print ("connected to port")
+    connected = 1
+  except Exception as e:
+    print(e)
+  except:
+    print ("  Connection error, waiting...")
+    sleep(5)
+
+print ("listening for " + srvName + " on port " + str(PORT) + " with timer = 10.0") # + str(myTimeout)
+
+timeouts = 0
+connects = 0
+
+######################################
+while(True):
+
+   try:
+      conn, addr = s.accept()
+      
+   except KeyboardInterrupt:
+      print('keyboard interrupt %s')
+      conn.close()
+      exit()
+   except:
+      # here if no connection
+      timeouts += 1
+#      print('timeout ' + srvName )
+
+   else:
+    connects += 1
+    myStr = 'Connection ' + str(connects) + ' from ' + str(addr) + '(' + srvName + ') '
+    print (myStr)
+    data  = conn.recv(1024)
+
+    bantenna = antenna.encode(encoding='UTF-8')
+
+    print("Msg received: " + data.decode(encoding='UTF-8'), end = '' )
+    print("     Sending: " + antenna)
+
+    if data==b'status\n':
+         conn.sendall(bantenna + b'\n')
+         conn.close()
+    else:
+         conn.sendall(b'data undefined\n')
+         print ("data undefined\n")
+
